@@ -152,6 +152,39 @@ describe("exportBackup / importBackup", () => {
     const result = useAppStore.getState().importBackup(JSON.stringify({ hello: "world" }));
     expect(result.ok).toBe(false);
   });
+
+  it("migrates a legacy unapp-old (v1) export instead of rejecting it", () => {
+    const legacy = {
+      id: "unal",
+      name: "UNAL",
+      configuration: { free_days: [], lunch_time: { start: "12:00", end: "13:00" }, range: { start: "07:00", end: "20:00" } },
+      courses: [
+        {
+          course_id: "c1",
+          course_name: "Cálculo",
+          course_credits: "4",
+          course_groups: [
+            {
+              group_id: "1",
+              group_quota: "10",
+              schedule: [
+                {
+                  schedule_day: "monday",
+                  schedule_time: { start: "07:00", end: "09:00" },
+                  date: { start: "01/02/2026", end: "30/05/2026" },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const result = useAppStore.getState().importBackup(JSON.stringify(legacy));
+    expect(result.ok).toBe(true);
+    const uni = useAppStore.getState().universities.find((u) => u.id === "mi-uni");
+    expect(uni?.courses[0]?.id).toBe("c1");
+    expect(uni?.courses[0]?.groups[0]?.quota).toBe(10);
+  });
 });
 
 describe("goToCombination", () => {

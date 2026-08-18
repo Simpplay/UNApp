@@ -3,6 +3,8 @@ import {
   defaultCombinationConfig,
   generateCombinations,
   isGroupManuallyDisabled,
+  isLegacyV1Backup,
+  migrateLegacyV1Backup,
   type CombinationConfig,
   type Course,
   type GenerateResult,
@@ -272,19 +274,30 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch {
       return { ok: false, error: "El archivo no es JSON válido." };
     }
-    if (!isBackupShape(parsed)) {
+
+    // A backup from unapp-old (v1) has a different, untyped shape
+    // (`course_id`/`course_name`/... instead of `id`/`name`/...) - detect
+    // and migrate it instead of rejecting it outright.
+    let backup: { courses: Course[]; config?: CombinationConfig; pinned?: PinnedCombination[] };
+    if (isLegacyV1Backup(parsed)) {
+      const migrated = migrateLegacyV1Backup(parsed);
+      if (migrated.warnings.length > 0) console.warn("Advertencias al migrar respaldo v1:", migrated.warnings);
+      backup = { courses: migrated.courses, config: migrated.config };
+    } else if (isBackupShape(parsed)) {
+      backup = parsed;
+    } else {
       return { ok: false, error: "El archivo no tiene el formato esperado de un respaldo de UNApp." };
     }
 
     const existingCourseIds = new Set(uni.courses.map((c) => c.id));
-    const newCourses = parsed.courses.filter((c) => !existingCourseIds.has(c.id));
+    const newCourses = backup.courses.filter((c) => !existingCourseIds.has(c.id));
     const existingPinIds = new Set(uni.pinned.map((p) => p.id));
-    const newPinned = (parsed.pinned ?? []).filter((p) => !existingPinIds.has(p.id));
+    const newPinned = (backup.pinned ?? []).filter((p) => !existingPinIds.has(p.id));
 
     const nextUni: StoredUniversity = {
       ...uni,
       courses: [...uni.courses, ...newCourses],
-      config: parsed.config ?? uni.config,
+      config: backup.config ?? uni.config,
       pinned: [...uni.pinned, ...newPinned],
     };
     set((s) => ({ universities: s.universities.map((u) => (u.id === uni.id ? nextUni : u)) }));

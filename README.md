@@ -47,7 +47,7 @@ pnpm lint
 - **UdeA no reporta créditos** en el formato de exportación soportado (tampoco lo hacía la v1) - hay que completarlos a mano por ahora.
 - **FUNLAM no tiene combinaciones que generar**: su exportación es "mis cursos ya matriculados", no un catálogo de grupos a elegir - ver el comentario en `adapters/funlam.ts`.
 - **Sin pruebas end-to-end todavía** (Playwright está en el plan, no implementado). Las pruebas actuales cubren `packages/core` con pruebas unitarias; `apps/web` se verificó manualmente en navegador durante el desarrollo pero no tiene suite automatizada propia.
-- **Importar datos de la v1**: aún no existe un importador del JSON que exportaba la v1 (`university.getAsJSON()`). El esquema de `@unapp/core` es compatible en espíritu (mismos campos conceptuales), así que un importador es un paso relativamente mecánico cuando se necesite.
+- **Importar datos de la v1**: el botón de importar respaldo (ícono de subir, arriba a la derecha) detecta automáticamente si el JSON es un respaldo de `unapp-old` (`university.getAsJSON()`) y lo migra - ver `packages/core/src/migration/fromLegacyV1.ts`. Tolera algunas inconsistencias reales del formato viejo (créditos/cupos como texto o número, fechas en `DD/MM/YYYY` o ya en ISO), y reporta como advertencia (sin romper el resto de la importación) cualquier horario que no pueda migrar.
 
 ## Licencia
 

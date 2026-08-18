@@ -89,7 +89,7 @@ export function TopBar() {
           disabled={!selectedUniversityExists}
           className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--accent)] disabled:opacity-30"
           aria-label="Importar respaldo"
-          title="Importar respaldo (.json)"
+          title="Importar respaldo (.json) - también acepta un respaldo de la versión anterior de UNApp"
         >
           <UploadIcon />
         </button>
