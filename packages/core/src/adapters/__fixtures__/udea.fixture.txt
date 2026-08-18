@@ -1,0 +1,14 @@
+Materia: [1503123] Cálculo Vectorial y Series
+GRUPO: 3
+HORARIO: LMV 7-9
+CUPO DISPONIBLE: 18
+PROFESOR(ES): Julian Restrepo
+GRUPO: 4
+HORARIO: J 14-16;S 8-10
+CUPO DISPONIBLE: 0
+PROFESOR(ES): Marcela Ospina
+Materia: [1503200] Programación Funcional
+GRUPO: 1
+HORARIO: MW 10-12
+CUPO DISPONIBLE: 25
+PROFESOR(ES): Julian Restrepo

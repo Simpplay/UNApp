@@ -1,0 +1,6 @@
+1	FL001	Fundamentos de Programación	A	3	extra
+x	x	LUN	02/02/2026	30/05/2026	07:00	09:00
+x	x	MIE	02/02/2026	30/05/2026	07:00	09:00
+2	FL010	Ética Profesional	B	2	extra
+x	x	VIE	02/02/2026	30/05/2026	14:00	16:00
+Cursos matriculados

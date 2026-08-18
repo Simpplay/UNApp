@@ -1,0 +1,52 @@
+Volver
+Cálculo Diferencial (1000003)
+Créditos: 4
+(1000003) Grupo 1 (Requiere aprobar 0 creditos)
+Profesor: Ana Ruiz
+Fecha: 01/02/2026 - 30/05/2026
+CLASE TEORICA
+LUNES 7:00 a.m. a 9:00 a.m.
+Bl 411 - 214
+MIERCOLES 7:00 a.m. a 9:00 a.m.
+Bl 411 - 214
+Cupos disponibles: 15
+(1000003) Grupo 2 (Requiere aprobar 0 creditos)
+Profesor: Carlos Gil
+CLASE TEORICA
+MARTES 10:00 a.m. a 12:00 p.m.
+Bl 411 - 214
+JUEVES 10:00 a.m. a 12:00 p.m.
+Bl 411 - 214
+Cupos disponibles: 0
+Volver
+Bases de Datos (2016000)
+Créditos: 3
+(2016000) Grupo 1 (Requiere aprobar 8 creditos)
+Profesor: Laura Mesa
+CLASE TEORICA
+VIERNES 8:00 a.m. a 10:00 a.m.
+Bl 412 - 101
+Cupos disponibles: 20
+(2016000) L 1
+CLASE LABORATORIO
+LUNES 2:00 p.m. a 4:00 p.m.
+Bl 412 - Lab1
+Cupos disponibles: 10
+(2016000) L 2
+CLASE LABORATORIO
+MARTES 2:00 p.m. a 4:00 p.m.
+Bl 412 - Lab1
+Cupos disponibles: 10
+(2016000) L 3
+CLASE LABORATORIO
+MIERCOLES 2:00 p.m. a 4:00 p.m.
+Bl 412 - Lab1
+Cupos disponibles: 10
+(2016000) L 4
+CLASE LABORATORIO
+JUEVES 2:00 p.m. a 4:00 p.m.
+Bl 412 - Lab1
+Cupos disponibles: 0
+Número asignaturas requisito: 1
+8 - Cálculo Diferencial
+Tipo de prerrequisito implica
