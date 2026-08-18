@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { downloadText } from "../lib/download";
 import { useAppStore } from "../store/appStore";
-import { GearIcon, PlusIcon } from "./icons";
+import { DownloadIcon, GearIcon, PlusIcon, UploadIcon } from "./icons";
 import { Modal } from "./Modal";
 
 export function TopBar() {
@@ -9,12 +10,36 @@ export function TopBar() {
   const selectUniversity = useAppStore((s) => s.selectUniversity);
   const addManualUniversity = useAppStore((s) => s.addManualUniversity);
   const toggleSettings = useAppStore((s) => s.toggleSettings);
+  const exportBackup = useAppStore((s) => s.exportBackup);
+  const importBackup = useAppStore((s) => s.importBackup);
   const selectedUniversityExists = Boolean(selectedId);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [addOpen, setAddOpen] = useState(false);
   const [name, setName] = useState("");
   const [id, setId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [importFeedback, setImportFeedback] = useState<string | null>(null);
+
+  function handleExport() {
+    const json = exportBackup();
+    if (!json) return;
+    downloadText(`${selectedId}.unapp.json`, json, "application/json");
+  }
+
+  function handleImportClick() {
+    fileInputRef.current?.click();
+  }
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const text = await file.text();
+    const result = importBackup(text);
+    setImportFeedback(result.ok ? "Respaldo importado." : (result.error ?? "No se pudo importar."));
+    window.setTimeout(() => setImportFeedback(null), 4000);
+  }
 
   function submitAdd() {
     const result = addManualUniversity(name, id);
@@ -56,6 +81,28 @@ export function TopBar() {
         </button>
       </div>
       <div className="flex items-center gap-1.5">
+        {importFeedback && <span className="mr-1 text-[11px] text-[var(--text-muted)]">{importFeedback}</span>}
+        <input ref={fileInputRef} type="file" accept="application/json" hidden onChange={handleFileSelected} />
+        <button
+          type="button"
+          onClick={handleImportClick}
+          disabled={!selectedUniversityExists}
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--accent)] disabled:opacity-30"
+          aria-label="Importar respaldo"
+          title="Importar respaldo (.json)"
+        >
+          <UploadIcon />
+        </button>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={!selectedUniversityExists}
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--accent)] disabled:opacity-30"
+          aria-label="Exportar respaldo"
+          title="Exportar respaldo (.json)"
+        >
+          <DownloadIcon />
+        </button>
         <button
           type="button"
           onClick={toggleSettings}

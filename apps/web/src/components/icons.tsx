@@ -77,3 +77,9 @@ export const DownloadIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M10 3v10M6 9l4 4 4-4M4 16h12" />
   </Icon>
 );
+
+export const UploadIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M10 13V3M6 7l4-4 4 4M4 16h12" />
+  </Icon>
+);

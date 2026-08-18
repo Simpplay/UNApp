@@ -34,5 +34,8 @@ jobs:
       - name: Test (core)
         run: pnpm --filter @unapp/core run test
 
+      - name: Test (web)
+        run: pnpm --filter @unapp/web run test
+
       - name: Build (web)
         run: pnpm --filter @unapp/web run build

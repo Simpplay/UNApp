@@ -1,10 +1,12 @@
 import { isCourseFullyDisabled, isGroupEffectivelyDisabled, type Course } from "@unapp/core";
 import { useState } from "react";
 import { useAppStore } from "../store/appStore";
-import { TrashIcon } from "./icons";
+import { AddGroupDialog } from "./AddGroupDialog";
+import { PlusIcon, TrashIcon } from "./icons";
 
 export function CourseCard({ course }: { course: Course }) {
   const [expanded, setExpanded] = useState(false);
+  const [addGroupOpen, setAddGroupOpen] = useState(false);
   const removeCourse = useAppStore((s) => s.removeCourse);
   const toggleGroupDisabled = useAppStore((s) => s.toggleGroupDisabled);
   const disabled = isCourseFullyDisabled(course);
@@ -59,16 +61,28 @@ export function CourseCard({ course }: { course: Course }) {
               </button>
             );
           })}
-          <button
-            type="button"
-            onClick={() => removeCourse(course.id)}
-            className="mt-1 flex items-center gap-1.5 self-start rounded-md px-1.5 py-1 text-[11px] text-rose-400/80 hover:text-rose-400"
-          >
-            <TrashIcon width={12} height={12} />
-            Eliminar curso
-          </button>
+          <div className="mt-1 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setAddGroupOpen(true)}
+              className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px] text-[var(--accent)]"
+            >
+              <PlusIcon width={12} height={12} />
+              Agregar grupo
+            </button>
+            <button
+              type="button"
+              onClick={() => removeCourse(course.id)}
+              className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px] text-rose-400/80 hover:text-rose-400"
+            >
+              <TrashIcon width={12} height={12} />
+              Eliminar curso
+            </button>
+          </div>
         </div>
       )}
+
+      {addGroupOpen && <AddGroupDialog courseId={course.id} onClose={() => setAddGroupOpen(false)} />}
     </div>
   );
 }

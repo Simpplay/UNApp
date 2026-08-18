@@ -6,6 +6,7 @@ import {
   type CombinationConfig,
   type Course,
   type GenerateResult,
+  type Group,
   type ParseWarning,
 } from "@unapp/core";
 import { create } from "zustand";
@@ -38,6 +39,7 @@ interface AppState {
   addManualUniversity: (name: string, id: string) => { ok: boolean; error?: string };
   importText: (text: string) => { warnings: ParseWarning[]; added: number };
   addManualCourse: (course: Course) => void;
+  addManualGroup: (courseId: string, group: Group) => { ok: boolean; error?: string };
   removeCourse: (courseId: string) => void;
   toggleGroupDisabled: (courseId: string, groupId: string) => void;
   updateConfig: (patch: Partial<CombinationConfig>) => void;
@@ -48,6 +50,8 @@ interface AppState {
   unpin: (pinId: string) => void;
   toggleSettings: () => void;
   toggleCompare: () => void;
+  exportBackup: () => string | null;
+  importBackup: (json: string) => { ok: boolean; error?: string };
 }
 
 function selected(state: AppState): StoredUniversity | undefined {
@@ -56,6 +60,19 @@ function selected(state: AppState): StoredUniversity | undefined {
 
 async function persist(u: StoredUniversity): Promise<void> {
   await db.universities.put(u);
+}
+
+interface BackupShape {
+  courses: Course[];
+  config?: CombinationConfig;
+  pinned?: PinnedCombination[];
+}
+
+function isBackupShape(value: unknown): value is BackupShape {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  if (!Array.isArray(v.courses)) return false;
+  return v.courses.every((c) => c && typeof c === "object" && typeof (c as Course).id === "string");
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -135,6 +152,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     const nextUni: StoredUniversity = { ...uni, courses: [...uni.courses, course] };
     set((s) => ({ universities: s.universities.map((u) => (u.id === uni.id ? nextUni : u)) }));
     void persist(nextUni);
+  },
+
+  addManualGroup: (courseId, group) => {
+    const state = get();
+    const uni = selected(state);
+    if (!uni) return { ok: false, error: "Selecciona una universidad." };
+    const course = uni.courses.find((c) => c.id === courseId);
+    if (!course) return { ok: false, error: "Curso no encontrado." };
+    if (course.groups.some((g) => g.id === group.id)) {
+      return { ok: false, error: "Ya existe un grupo con ese ID en este curso." };
+    }
+    const nextCourses = uni.courses.map((c) => (c.id === courseId ? { ...c, groups: [...c.groups, group] } : c));
+    const nextUni: StoredUniversity = { ...uni, courses: nextCourses };
+    set((s) => ({ universities: s.universities.map((u) => (u.id === uni.id ? nextUni : u)) }));
+    void persist(nextUni);
+    return { ok: true };
   },
 
   removeCourse: (courseId) => {
@@ -217,6 +250,47 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen, compareOpen: s.settingsOpen ? s.compareOpen : false })),
   toggleCompare: () => set((s) => ({ compareOpen: !s.compareOpen })),
+
+  exportBackup: () => {
+    const uni = selected(get());
+    if (!uni) return null;
+    return JSON.stringify(
+      { id: uni.id, name: uni.name, courses: uni.courses, config: uni.config, pinned: uni.pinned },
+      null,
+      2,
+    );
+  },
+
+  importBackup: (json) => {
+    const state = get();
+    const uni = selected(state);
+    if (!uni) return { ok: false, error: "Selecciona una universidad primero." };
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(json);
+    } catch {
+      return { ok: false, error: "El archivo no es JSON válido." };
+    }
+    if (!isBackupShape(parsed)) {
+      return { ok: false, error: "El archivo no tiene el formato esperado de un respaldo de UNApp." };
+    }
+
+    const existingCourseIds = new Set(uni.courses.map((c) => c.id));
+    const newCourses = parsed.courses.filter((c) => !existingCourseIds.has(c.id));
+    const existingPinIds = new Set(uni.pinned.map((p) => p.id));
+    const newPinned = (parsed.pinned ?? []).filter((p) => !existingPinIds.has(p.id));
+
+    const nextUni: StoredUniversity = {
+      ...uni,
+      courses: [...uni.courses, ...newCourses],
+      config: parsed.config ?? uni.config,
+      pinned: [...uni.pinned, ...newPinned],
+    };
+    set((s) => ({ universities: s.universities.map((u) => (u.id === uni.id ? nextUni : u)) }));
+    void persist(nextUni);
+    return { ok: true };
+  },
 }));
 
 export function useSelectedUniversity(): StoredUniversity | undefined {

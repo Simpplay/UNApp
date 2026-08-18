@@ -38,8 +38,7 @@ export function AddCourseDialog({ onClose }: { onClose: () => void }) {
           onChange={(e) => setCredits(e.target.value)}
         />
         <p className="text-[11px] text-[var(--text-faint)]">
-          Los grupos y horarios se agregan pegando el texto exportado por tu universidad, o próximamente desde este
-          mismo diálogo.
+          Después de crear el curso, expándelo en la lista para agregarle grupos y horarios.
         </p>
         <button
           type="button"
