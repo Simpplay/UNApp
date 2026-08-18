@@ -33,6 +33,7 @@ Ver `docs/ADAPTER_GUIDE.md` para cómo agregar una universidad nueva.
 - **Persistencia**: `src/lib/db.ts`, una tabla de Dexie keyed por id de universidad. Todo lo que se guarda es JSON-serializable de forma nativa porque el dominio en `@unapp/core` son tipos planos, no instancias de clase.
 - **Componentes**: presentacionales, leen del store con los selectores de Zustand (`useAppStore((s) => s.x)`) y llaman a las acciones del store para mutar. Ningún componente conoce la forma interna de `CombinationConfig` más allá de lo que necesita renderizar.
 - **Calendario**: grilla propia (`CalendarGrid.tsx` + `lib/calendarLayout.ts`) con CSS grid, en vez de una librería de calendario de terceros - el layout es simple (una semana, sin fechas reales, sin drag-and-drop) y no justificaba la dependencia pesada que usaba la v1 (FullCalendar) para este caso de uso.
+- **Plan de estudios**: `StudyPlanView.tsx` + `lib/studyPlan.ts` agrupan los cursos del usuario por nivel de prerrequisito (`groupCoursesByLevel`, con protección contra ciclos). A diferencia del `planner.js` de la v1, no fabrica cursos placeholder para prerrequisitos que no están en la lista del usuario ni muta el arreglo que recorre - un requisito no resuelto simplemente no cuenta para el nivel.
 
 ## Decisiones explícitas que se dejaron fuera (por ahora)
 

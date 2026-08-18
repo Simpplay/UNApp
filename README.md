@@ -13,6 +13,8 @@ Esta es una reescritura completa de [UNApp (v1)](../unapp-old), conservando la i
 - **Persistencia en IndexedDB** (Dexie) en vez de `localStorage`, sin límite de 5MB y sin serialización manual de instancias de clases.
 - **Interfaz nueva**: layout de una sola pantalla con barra lateral, navegador de combinaciones con insignias de calidad, comparador de combinaciones fijadas, panel de ajustes deslizable - sin ventanas de alerta para cada interacción.
 - **Exportación a `.ics`** (Google Calendar / Outlook / Apple Calendar), además de la exportación a PNG que ya existía.
+- **Respaldo/restauración en JSON** por universidad, y agregar grupos/horarios a mano (no solo por texto pegado) - ninguno de los dos existía como flujo completo en la v1 más allá de guardar/cargar por `localStorage`.
+- **Vista de "Plan de estudios"** agrupando cursos por nivel de prerrequisito, con protección contra ciclos y sin inventar cursos placeholder para prerrequisitos no encontrados (la v1 sí lo hacía, y además mutaba el arreglo que estaba recorriendo).
 
 ## Estructura
 
@@ -44,7 +46,6 @@ pnpm lint
 - **Adaptadores de universidad sin validar contra una exportación real.** Los tres adaptadores (`unal.ts`, `udea.ts`, `funlam.ts`) se reconstruyeron a partir de las reglas del intérprete de texto de la v1 (que sí documentan el formato de origen), no a partir de una exportación real capturada - eso habría significado guardar datos de matrícula de otra persona. Antes de confiar en ellos en producción: pega una exportación fresca y real de cada universidad, corre el adaptador correspondiente, y ajusta los `__fixtures__/*.fixture.txt` con el formato real si difiere. Cada adaptador documenta esta suposición en un comentario al inicio del archivo.
 - **UdeA no reporta créditos** en el formato de exportación soportado (tampoco lo hacía la v1) - hay que completarlos a mano por ahora.
 - **FUNLAM no tiene combinaciones que generar**: su exportación es "mis cursos ya matriculados", no un catálogo de grupos a elegir - ver el comentario en `adapters/funlam.ts`.
-- **La vista de "Plan de estudios"** (orden topológico por prerrequisitos, existía como `planner.js` en la v1) todavía no se portó a la v2 - quedó fuera del alcance de esta primera pasada para priorizar que el flujo principal (cursos → combinaciones → calendario) funcionara de punta a punta con las correcciones de bugs.
 - **Sin pruebas end-to-end todavía** (Playwright está en el plan, no implementado). Las pruebas actuales cubren `packages/core` con pruebas unitarias; `apps/web` se verificó manualmente en navegador durante el desarrollo pero no tiene suite automatizada propia.
 - **Importar datos de la v1**: aún no existe un importador del JSON que exportaba la v1 (`university.getAsJSON()`). El esquema de `@unapp/core` es compatible en espíritu (mismos campos conceptuales), así que un importador es un paso relativamente mecánico cuando se necesite.
 

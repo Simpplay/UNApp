@@ -1,11 +1,36 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { CalendarGrid } from "./components/CalendarGrid";
 import { ComparePanel } from "./components/ComparePanel";
 import { Navigator } from "./components/Navigator";
 import { SettingsDrawer } from "./components/SettingsDrawer";
 import { Sidebar } from "./components/Sidebar";
+import { StudyPlanView } from "./components/StudyPlanView";
 import { TopBar } from "./components/TopBar";
 import { useAppStore, useSelectedUniversity } from "./store/appStore";
+
+type View = "schedule" | "plan";
+
+function ViewTabs({ view, onChange }: { view: View; onChange: (v: View) => void }) {
+  const tab = (id: View, label: string) => (
+    <button
+      type="button"
+      onClick={() => onChange(id)}
+      className="rounded-md px-3 py-1.5 text-xs font-semibold"
+      style={{
+        color: view === id ? "var(--accent-ink)" : "var(--text-muted)",
+        background: view === id ? "var(--accent)" : "transparent",
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div className="flex gap-1 rounded-lg border border-[var(--border)] bg-[var(--panel)] p-1">
+      {tab("schedule", "Horario")}
+      {tab("plan", "Plan de estudios")}
+    </div>
+  );
+}
 
 function StatusBanner() {
   const generateResult = useAppStore((s) => s.generateResult);
@@ -43,6 +68,7 @@ export default function App() {
   const compareOpen = useAppStore((s) => s.compareOpen);
   const generateResult = useAppStore((s) => s.generateResult);
   const currentIndex = useAppStore((s) => s.currentIndex);
+  const [view, setView] = useState<View>("schedule");
 
   useEffect(() => {
     void hydrate();
@@ -60,11 +86,18 @@ export default function App() {
       <div className="flex min-h-0 flex-1">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
-          <StatusBanner />
-          <Navigator />
-          <CalendarGrid groups={currentGroups} />
+          <ViewTabs view={view} onChange={setView} />
+          {view === "schedule" ? (
+            <>
+              <StatusBanner />
+              <Navigator />
+              <CalendarGrid groups={currentGroups} />
+            </>
+          ) : (
+            <StudyPlanView />
+          )}
         </div>
-        {compareOpen && <ComparePanel />}
+        {view === "schedule" && compareOpen && <ComparePanel />}
       </div>
       <SettingsDrawer />
     </div>
