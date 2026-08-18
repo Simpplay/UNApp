@@ -51,4 +51,4 @@ pnpm lint
 
 ## Licencia
 
-Por definir.
+MIT - ver [LICENSE](LICENSE).
