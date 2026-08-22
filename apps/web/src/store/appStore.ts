@@ -4,16 +4,21 @@ import {
   generateCombinations,
   isGroupManuallyDisabled,
   isLegacyV1Backup,
+  mapUnalSubjectToCourse,
   migrateLegacyV1Backup,
   type CombinationConfig,
   type Course,
   type GenerateResult,
   type Group,
   type ParseWarning,
+  type UnalGroup,
+  type UnalScheduleEntry,
+  type UnalSubjectResult,
 } from "@unapp/core";
 import { create } from "zustand";
 import { db, type PinnedCombination, type StoredUniversity } from "../lib/db";
 import { newId } from "../lib/download";
+import { fetchGroupsWithSchedules } from "../lib/unalLiveApi";
 
 function emptyBuiltIns(): StoredUniversity[] {
   return builtInAdapters.map((adapter) => ({
@@ -42,6 +47,13 @@ interface AppState {
   importText: (text: string) => { warnings: ParseWarning[]; added: number };
   addManualCourse: (course: Course) => void;
   addManualGroup: (courseId: string, group: Group) => { ok: boolean; error?: string };
+  addLiveCourse: (
+    subject: UnalSubjectResult,
+    groups: UnalGroup[],
+    schedulesByGroupId: Record<string, UnalScheduleEntry[]>,
+  ) => { added: number; warnings: ParseWarning[] };
+  refreshLiveCourse: (courseId: string) => Promise<{ ok: boolean; error?: string }>;
+  refreshAllLiveCourses: () => Promise<void>;
   removeCourse: (courseId: string) => void;
   toggleGroupDisabled: (courseId: string, groupId: string) => void;
   updateConfig: (patch: Partial<CombinationConfig>) => void;
@@ -62,6 +74,61 @@ function selected(state: AppState): StoredUniversity | undefined {
 
 async function persist(u: StoredUniversity): Promise<void> {
   await db.universities.put(u);
+}
+
+/** Keeps a group's manual on/off toggle across a live refresh - only its schedule/quota should change. */
+function reconcileLiveGroups(existingGroups: Group[], incomingGroups: Group[]): Group[] {
+  const existingById = new Map(existingGroups.map((g) => [g.id, g]));
+  return incomingGroups.map((g) => {
+    const prev = existingById.get(g.id);
+    return prev ? { ...g, disabled: prev.disabled } : g;
+  });
+}
+
+/**
+ * Merges freshly-mapped live courses (from `mapUnalSubjectToCourse`) into a
+ * university: adds courses that aren't there yet, and for ones that already
+ * exist (re-adding the same search result, or refreshing) replaces groups
+ * while keeping the course's color/requirements and each group's manual
+ * disabled flag. Also records/updates `liveLinks` so the course can be
+ * refreshed again later without the caller needing to remember the subject.
+ */
+function applyLiveCourses(
+  uni: StoredUniversity,
+  subjectId: string,
+  subjectCode: string,
+  subjectUpdatedAt: string,
+  mappedCourses: Course[],
+  groupUpdatedAt: Record<string, string>,
+): StoredUniversity {
+  let courses = uni.courses;
+  const liveLinks = { ...(uni.liveLinks ?? {}) };
+
+  for (const incoming of mappedCourses) {
+    const existingIndex = courses.findIndex((c) => c.id === incoming.id);
+    if (existingIndex === -1) {
+      courses = [...courses, incoming];
+    } else {
+      const existing = courses[existingIndex] as Course;
+      const reconciled: Course = {
+        ...incoming,
+        color: existing.color,
+        requirements: existing.requirements.length > 0 ? existing.requirements : incoming.requirements,
+        groups: reconcileLiveGroups(existing.groups, incoming.groups),
+      };
+      courses = courses.map((c, i) => (i === existingIndex ? reconciled : c));
+    }
+
+    const prevLink = liveLinks[incoming.id];
+    liveLinks[incoming.id] = {
+      subjectId,
+      subjectCode,
+      subjectUpdatedAt,
+      groupUpdatedAt: { ...(prevLink?.groupUpdatedAt ?? {}), ...groupUpdatedAt },
+    };
+  }
+
+  return { ...uni, courses, liveLinks };
 }
 
 interface BackupShape {
@@ -172,11 +239,80 @@ export const useAppStore = create<AppState>((set, get) => ({
     return { ok: true };
   },
 
+  addLiveCourse: (subject, groups, schedulesByGroupId) => {
+    const state = get();
+    const uni = selected(state);
+    if (!uni) return { added: 0, warnings: [] };
+
+    const { courses: mapped, warnings } = mapUnalSubjectToCourse(subject, groups, schedulesByGroupId);
+    const groupUpdatedAt = Object.fromEntries(groups.map((g) => [g.group_identifier, g.updated_at]));
+    const nextUni = applyLiveCourses(uni, subject.subject_id, subject.code, subject.updated_at, mapped, groupUpdatedAt);
+
+    set((s) => ({ universities: s.universities.map((u) => (u.id === uni.id ? nextUni : u)) }));
+    void persist(nextUni);
+    return { added: mapped.length, warnings };
+  },
+
+  refreshLiveCourse: async (courseId) => {
+    const uni = selected(get());
+    const link = uni?.liveLinks?.[courseId];
+    if (!uni || !link) return { ok: false, error: "Este curso no viene de la búsqueda en vivo." };
+
+    const result = await fetchGroupsWithSchedules(link.subjectId);
+    if (!result.ok) return { ok: false, error: result.error };
+
+    const existing = uni.courses.find((c) => c.id === link.subjectCode);
+    const subjectUpdatedAt = new Date().toISOString();
+    const subject: UnalSubjectResult = {
+      subject_id: link.subjectId,
+      code: link.subjectCode,
+      name: existing?.name ?? courseId,
+      credits: existing?.credits ?? 0,
+      typologies: [],
+      plans: [],
+      is_libre_eleccion: false,
+      groups_count: result.data.groups.length,
+      available_seats: result.data.groups.reduce((sum, g) => sum + g.available_places, 0),
+      updated_at: subjectUpdatedAt,
+    };
+    const { courses: mapped } = mapUnalSubjectToCourse(subject, result.data.groups, result.data.schedulesByGroupId);
+    const groupUpdatedAt = Object.fromEntries(result.data.groups.map((g) => [g.group_identifier, g.updated_at]));
+
+    const latestUni = selected(get());
+    if (!latestUni) return { ok: false, error: "La universidad ya no está seleccionada." };
+    const nextUni = applyLiveCourses(latestUni, link.subjectId, link.subjectCode, subjectUpdatedAt, mapped, groupUpdatedAt);
+
+    set((s) => ({ universities: s.universities.map((u) => (u.id === latestUni.id ? nextUni : u)) }));
+    void persist(nextUni);
+    return result.data.failedGroupIds.length > 0
+      ? { ok: true, error: `${result.data.failedGroupIds.length} grupo(s) no se pudieron actualizar.` }
+      : { ok: true };
+  },
+
+  refreshAllLiveCourses: async () => {
+    const uni = selected(get());
+    if (!uni?.liveLinks) return;
+    // A lab-split course shares its subjectId with its lecture sibling - refresh once per
+    // subject, not once per course, so we don't double-fetch the same groups/schedules.
+    const seenSubjectIds = new Set<string>();
+    for (const [courseId, link] of Object.entries(uni.liveLinks)) {
+      if (seenSubjectIds.has(link.subjectId)) continue;
+      seenSubjectIds.add(link.subjectId);
+      // Sequential across subjects (each refresh already parallelizes its own groups' fetches internally).
+      await get().refreshLiveCourse(courseId);
+    }
+  },
+
   removeCourse: (courseId) => {
     const state = get();
     const uni = selected(state);
     if (!uni) return;
     const nextUni: StoredUniversity = { ...uni, courses: uni.courses.filter((c) => c.id !== courseId) };
+    if (nextUni.liveLinks && courseId in nextUni.liveLinks) {
+      const liveLinks = { ...nextUni.liveLinks };
+      delete liveLinks[courseId];
+      nextUni.liveLinks = liveLinks;
+    }
     set((s) => ({
       universities: s.universities.map((u) => (u.id === uni.id ? nextUni : u)),
       generateResult: null,

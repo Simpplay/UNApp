@@ -16,6 +16,16 @@ export interface PinnedCombination {
  * stores it directly, with no 5MB `localStorage` ceiling and no manual
  * (de)serialization glue.
  */
+/** Tracks a course that came from the UNAL live search, so it can be refreshed later. */
+export interface LiveCourseLink {
+  subjectId: string;
+  /** The API's `code` for the subject - the id of the lecture course (a lab sibling gets a `-lab` suffix locally). */
+  subjectCode: string;
+  subjectUpdatedAt: string;
+  /** group id -> `updated_at` reported by the API for that group's last fetch. */
+  groupUpdatedAt: Record<string, string>;
+}
+
 export interface StoredUniversity {
   id: string;
   name: string;
@@ -23,6 +33,8 @@ export interface StoredUniversity {
   courses: Course[];
   config: CombinationConfig;
   pinned: PinnedCombination[];
+  /** course id -> live source link, only set for courses added via the UNAL live search. */
+  liveLinks?: Record<string, LiveCourseLink>;
 }
 
 class UnappDatabase extends Dexie {

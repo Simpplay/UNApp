@@ -3,13 +3,15 @@ import { useAppStore, useSelectedUniversity } from "../store/appStore";
 import { AddCourseDialog } from "./AddCourseDialog";
 import { CourseCard } from "./CourseCard";
 import { ImportTextPanel } from "./ImportTextPanel";
-import { PlusIcon, SearchIcon } from "./icons";
+import { UnalLiveSearchDialog } from "./UnalLiveSearchDialog";
+import { PlusIcon, SearchIcon, WifiIcon } from "./icons";
 
 export function Sidebar() {
   const university = useSelectedUniversity();
   const generate = useAppStore((s) => s.generate);
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [liveSearchOpen, setLiveSearchOpen] = useState(false);
 
   const filtered = useMemo(() => {
     if (!university) return [];
@@ -37,14 +39,28 @@ export function Sidebar() {
     <div className="flex w-72 shrink-0 flex-col gap-3 border-r border-[var(--border)] bg-[var(--panel)] p-3.5">
       <div className="flex items-center justify-between">
         <div className="font-display text-[15px] font-semibold text-[var(--text)]">Cursos</div>
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--accent)] text-[var(--accent-ink)]"
-          aria-label="Agregar curso"
-        >
-          <PlusIcon width={13} height={13} />
-        </button>
+        <div className="flex items-center gap-1.5">
+          {university.id === "unal" && (
+            <button
+              type="button"
+              onClick={() => setLiveSearchOpen(true)}
+              className="flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--accent)] hover:border-[var(--accent)]"
+              aria-label="Buscar oferta en vivo de la UNAL"
+              title="Buscar y agregar cursos con cupos en tiempo real"
+            >
+              <WifiIcon width={12} height={12} />
+              Buscar en vivo
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--accent)] text-[var(--accent-ink)]"
+            aria-label="Agregar curso"
+          >
+            <PlusIcon width={13} height={13} />
+          </button>
+        </div>
       </div>
 
       <ImportTextPanel />
@@ -64,7 +80,7 @@ export function Sidebar() {
           <div className="pt-6 text-center text-[11px] text-[var(--text-faint)]">Ningún curso todavía.</div>
         )}
         {filtered.map((course) => (
-          <CourseCard key={course.id} course={course} />
+          <CourseCard key={course.id} course={course} liveLink={university.liveLinks?.[course.id]} />
         ))}
       </div>
 
@@ -84,6 +100,7 @@ export function Sidebar() {
       </div>
 
       {addOpen && <AddCourseDialog onClose={() => setAddOpen(false)} />}
+      {liveSearchOpen && <UnalLiveSearchDialog onClose={() => setLiveSearchOpen(false)} />}
     </div>
   );
 }

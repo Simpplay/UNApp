@@ -1,15 +1,37 @@
 import { isCourseFullyDisabled, isGroupEffectivelyDisabled, type Course } from "@unapp/core";
 import { useState } from "react";
+import type { LiveCourseLink } from "../lib/db";
+import { formatRelativeTime } from "../lib/format";
 import { useAppStore } from "../store/appStore";
 import { AddGroupDialog } from "./AddGroupDialog";
-import { PlusIcon, TrashIcon } from "./icons";
+import { PlusIcon, RefreshIcon, TrashIcon, WifiIcon } from "./icons";
 
-export function CourseCard({ course }: { course: Course }) {
+/** Absolute thresholds - the domain `Group` model only knows available seats, not capacity. */
+function quotaColor(quota: number): string {
+  if (quota === -1) return "var(--text-faint)";
+  if (quota === 0) return "#fb7185";
+  if (quota <= 5) return "#fbbf24";
+  return "#34d399";
+}
+
+export function CourseCard({ course, liveLink }: { course: Course; liveLink?: LiveCourseLink | undefined }) {
   const [expanded, setExpanded] = useState(false);
   const [addGroupOpen, setAddGroupOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const removeCourse = useAppStore((s) => s.removeCourse);
   const toggleGroupDisabled = useAppStore((s) => s.toggleGroupDisabled);
+  const refreshLiveCourse = useAppStore((s) => s.refreshLiveCourse);
   const disabled = isCourseFullyDisabled(course);
+
+  async function handleRefresh(e: React.MouseEvent) {
+    e.stopPropagation();
+    setRefreshing(true);
+    setRefreshError(null);
+    const result = await refreshLiveCourse(course.id);
+    if (!result.ok) setRefreshError(result.error ?? "No se pudo actualizar.");
+    setRefreshing(false);
+  }
 
   return (
     <div
@@ -28,11 +50,36 @@ export function CourseCard({ course }: { course: Course }) {
       >
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: course.color }} />
         <span className="flex-1 truncate text-xs font-semibold text-[var(--text)]">{course.name}</span>
+        {liveLink && (
+          <span
+            className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[var(--accent)]"
+            style={{ background: "color-mix(in srgb, var(--accent) 14%, transparent)" }}
+            title={`Datos en vivo de UNAL - actualizado ${formatRelativeTime(liveLink.subjectUpdatedAt)}`}
+          >
+            <WifiIcon width={10} height={10} />
+            en vivo
+          </span>
+        )}
         <span className="font-mono text-[10px] text-[var(--text-muted)]">{course.credits}cr</span>
       </button>
-      <div className="pl-3.5 font-mono text-[10px] text-[var(--text-faint)]">
-        {course.id} · {course.groups.length} grupo{course.groups.length === 1 ? "" : "s"}
+      <div className="flex items-center justify-between pl-3.5">
+        <span className="font-mono text-[10px] text-[var(--text-faint)]">
+          {course.id} · {course.groups.length} grupo{course.groups.length === 1 ? "" : "s"}
+        </span>
+        {liveLink && (
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1 rounded px-1 py-0.5 text-[10px] text-[var(--text-muted)] hover:text-[var(--accent)] disabled:opacity-40"
+            title="Actualizar cupos desde UNAL"
+          >
+            <RefreshIcon width={10} height={10} className={refreshing ? "animate-spin" : ""} />
+            {refreshing ? "Actualizando..." : "Actualizar"}
+          </button>
+        )}
       </div>
+      {refreshError && <div className="pl-3.5 text-[10px] text-rose-400">{refreshError}</div>}
 
       {expanded && (
         <div className="mt-2 flex flex-col gap-1.5 border-t border-[var(--border)] pt-2">
@@ -57,7 +104,12 @@ export function CourseCard({ course }: { course: Course }) {
                   Grupo {g.id}
                   {g.teacher ? ` · ${g.teacher}` : ""}
                 </span>
-                <span className="font-mono">{g.quota === -1 ? "?" : g.quota}</span>
+                <span className="flex items-center gap-1.5 font-mono">
+                  {liveLink && (
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: quotaColor(g.quota) }} />
+                  )}
+                  {g.quota === -1 ? "?" : g.quota}
+                </span>
               </button>
             );
           })}

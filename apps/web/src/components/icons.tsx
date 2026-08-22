@@ -83,3 +83,18 @@ export const UploadIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M10 13V3M6 7l4-4 4 4M4 16h12" />
   </Icon>
 );
+
+export const RefreshIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M4 10a6 6 0 0110.2-4.3M16 10a6 6 0 01-10.2 4.3" />
+    <path d="M14.2 3.8v2.9h-2.9M5.8 16.2v-2.9h2.9" />
+  </Icon>
+);
+
+export const WifiIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M3.5 8.2a9.5 9.5 0 0113 0M6 11a5.5 5.5 0 018 0" />
+    <path d="M8.5 13.8a2 2 0 013 0" strokeLinecap="round" />
+    <circle cx="10" cy="16.2" r="0.9" fill="currentColor" stroke="none" />
+  </Icon>
+);
