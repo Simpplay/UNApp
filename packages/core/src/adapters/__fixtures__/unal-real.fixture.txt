@@ -1,0 +1,43 @@
+Logo UniversidadPortal de Servicios Académicos
+usuario
+Datos personales
+Información académica
+Proceso de inscripción
+Buscador de cursos
+Información Financiera
+Trámites y solicitudes
+Evaluación docente
+Información de la asignatura
+Volver
+INTRODUCCIÓN A LA TEORÍA DE GRAFOS (3006900)
+Tipología: FUND. OPTATIVA
+Créditos:4
+CIENCIAS DE LA COMPUTACIÓN
+Facultad: FACULTAD DE CIENCIAS
+
+Contenido de la asignatura
+
+CLASE TEORICA 3006900 (3006900)
+
+(1) Grupo 1
+
+Profesor: Docente De Ejemplo.
+Facultad:
+Horarios/Aula: No informado
+Fecha:27/08/2026 - 17/12/2026
+MIÉRCOLES de 08:00 a 10:00.
+AULA GENERAL. 43-305. BLOQUE 43. SALON.
+VIERNES de 08:00 a 10:00.
+AULA GENERAL. 43-305. BLOQUE 43. SALON.
+Duración: Semestral
+Jornada: DIURNO
+Cupos disponibles: 12
+Prerrequisitos
+Condición 1Tipo M¿Todas? [N]Número asignaturas [1]
+3006822CONJUNTOS Y COMBINATORIA
+3010390Fundamentos de matemáticas discretas
+Tipo de prerrequisito implica. M - no se puede matricular la asignatura sin superar el prerrequisito. O - podrá matricular, pero no ser calificado sin la superación del prerrequisito. E - o matricula el prerrequisito simultáneamente, o lo ha matriculado alguna vez. A - anulación por incompatibilidad. Si se matricula de las dos asignaturas afectadas por el prerrequisito y no supera la asignatura llave, las asignaturas afectadas por el prerrequisito aparecerán como anuladas.
+Volver
+
+Universidad Nacional de Colombia--Dirección Nacional de Información Académica
+Portal de Servicios Académicos (V. 4.4.0) |UXXI Todos los derechos reservados

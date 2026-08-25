@@ -38,6 +38,30 @@ export function parseSpanishTimeRange(value: string): TimeRange | null {
   return { start, end };
 }
 
+const PLAIN_24H_TIME = /^(\d{1,2}):(\d{2})$/;
+
+/** Parses a single "HH:MM" (24h) token into minutes-since-midnight. */
+export function parse24hTime(value: string): MinutesOfDay | null {
+  const match = PLAIN_24H_TIME.exec(value.trim());
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+/**
+ * Parses UNAL's day-line time range as it actually appears in SIA exports:
+ * "de 08:00 a 10:00." (24h, with a "de" lead-in and a trailing period).
+ * Falls back to the 12h "a.m./p.m." form in case some offerings still use it.
+ */
+export function parseUnalDayTimeRange(value: string): TimeRange | null {
+  const cleaned = value.trim().replace(/^de\s+/i, "").replace(/\.\s*$/, "");
+  const parts = cleaned.split(/\sa\s/i);
+  if (parts.length !== 2) return null;
+  const start = parseMeridiemTime(parts[0] as string) ?? parse24hTime(parts[0] as string);
+  const end = parseMeridiemTime(parts[1] as string) ?? parse24hTime(parts[1] as string);
+  if (start === null || end === null) return null;
+  return { start, end };
+}
+
 /** Parses "7:00-9:00" (24h, hyphen-separated - UdeA's schedule format after normalization). */
 export function parse24hTimeRange(value: string): TimeRange | null {
   const [startRaw, endRaw] = value.split("-");

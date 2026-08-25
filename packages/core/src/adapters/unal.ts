@@ -1,31 +1,38 @@
 import { randomCourseColor, type Group, type ScheduleSlot } from "../model/course.js";
 import type { DateRange, Weekday } from "../model/time.js";
-import { ddmmyyyyToIso, defaultTermValidity, parseSpanishTimeRange, splitLabGroups } from "./shared.js";
+import { ddmmyyyyToIso, defaultTermValidity, parseUnalDayTimeRange, splitLabGroups } from "./shared.js";
 import type { ParseResult, ParseWarning, UniversityAdapter } from "./types.js";
 
 /**
  * Universidad Nacional de Colombia (SIA "oferta de asignaturas" export).
  *
- * Ported from the legacy `unal.unapp` instruction set. The source text is a
- * repeating block per course, per group, of the shape:
+ * Originally ported from the legacy `unal.unapp` instruction set as a
+ * reconstruction (see `unal.fixture.txt`/`unal.test.ts`), before any real
+ * export had been checked against it. That reconstruction assumed 12h
+ * "a.m./p.m." day lines and a "CLASE TEORICA"/"CLASE LABORATORIO" marker
+ * placed after the group line - both wrong. A real "Información de la
+ * asignatura" page (`unal-real.fixture.txt`) instead looks like:
  *
  *   Volver
- *   Cálculo Diferencial (1000003)
- *   Créditos: 4
- *   (1000003) Grupo 1 (Requiere aprobar 0 creditos)
- *   Profesor: Juan Perez
- *   CLASE TEORICA
- *   LUNES 7:00 a.m. a 9:00 a.m.
- *   Bl 411 - 214
- *   Fecha: 01/02/2026 - 30/05/2026
+ *   INTRODUCCIÓN A LA TEORÍA DE GRAFOS (3006900)
+ *   Créditos:4
+ *   CLASE TEORICA 3006900 (3006900)
+ *   (1) Grupo 1
+ *   Profesor: Nombre Apellido.
+ *   Fecha:27/08/2026 - 17/12/2026
+ *   MIÉRCOLES de 08:00 a 10:00.
+ *   AULA GENERAL. 43-305. BLOQUE 43. SALON.
  *   Cupos disponibles: 12
+ *   Prerrequisitos
+ *   Condición 1Tipo M¿Todas? [N]Número asignaturas [1]
+ *   3006822CONJUNTOS Y COMBINATORIA
  *
- * Assumption flagged for validation: this shape is reconstructed from the
- * regex patterns in `unal.unapp`, not from a captured real export (which
- * would contain another student's registration data). Before trusting this
- * in production, paste one real, fresh export into
- * `unal.fixture.txt` and confirm every course/group/schedule field lands
- * where expected - the fixture test below is the harness for that check.
+ * i.e. 24h day lines ("de HH:MM a HH:MM."), the class-type marker ahead of
+ * the group it applies to, the "¿Todas?"/"Número asignaturas" markers packed
+ * onto one line, and unseparated "<id><name>" prerequisite lines. The parser
+ * below handles both shapes; keep testing new real exports against
+ * `unal-real.fixture.txt` as more course layouts turn up (labs, multiple
+ * groups, zero quota, etc. haven't been observed there yet).
  */
 const DAY_LINE = /^(LUNES|MARTES|MI[ÉE]RCOLES|JUEVES|VIERNES|S[ÁA]BADO|DOMINGO)\s+(.+)$/i;
 
@@ -60,6 +67,7 @@ export function parseUnal(rawText: string, options: { defaultValidity?: DateRang
   let currentGroup: Group | null = null;
   let currentGroupValidity: DateRange | null = null;
   let pendingClassroomSlot: ScheduleSlot | null = null;
+  let pendingIsLab = false;
   let excludedProgram = false;
   let inRequirements = false;
 
@@ -69,6 +77,7 @@ export function parseUnal(rawText: string, options: { defaultValidity?: DateRang
     currentGroup = null;
     currentGroupValidity = null;
     pendingClassroomSlot = null;
+    pendingIsLab = false;
     excludedProgram = false;
   };
 
@@ -79,6 +88,10 @@ export function parseUnal(rawText: string, options: { defaultValidity?: DateRang
     if (line === "Volver") {
       flushCourse();
       const nameLine = (lines[i + 1] ?? "").trim();
+      if (nameLine === "") {
+        // Trailing/standalone "Volver" nav button (e.g. page footer) - not a course boundary.
+        continue;
+      }
       const match = /^(.*)\s\(([^)]+)\)$/.exec(nameLine);
       if (match) {
         current = { id: match[2] as string, name: (match[1] as string).trim(), credits: 0, groups: [], requirements: [] };
@@ -101,19 +114,8 @@ export function parseUnal(rawText: string, options: { defaultValidity?: DateRang
       continue;
     }
 
-    if (/¿Todas\?/.test(line)) {
-      inRequirements = false;
-      continue;
-    }
-
-    if (inRequirements) {
-      const reqMatch = /^(\d+)\s*[-–]\s*(.+)$/.exec(line);
-      if (reqMatch) {
-        current.requirements.push({ courseId: reqMatch[1] as string, courseName: (reqMatch[2] as string).trim() });
-        continue;
-      }
-    }
-
+    // Checked before "¿Todas?" because real SIA exports pack both onto one line:
+    // "Condición 1Tipo M¿Todas? [N]Número asignaturas [1]".
     if (/N[uú]mero asignaturas/i.test(line)) {
       inRequirements = true;
       continue;
@@ -122,12 +124,28 @@ export function parseUnal(rawText: string, options: { defaultValidity?: DateRang
       inRequirements = false;
       continue;
     }
+    if (/¿Todas\?/.test(line)) {
+      inRequirements = false;
+      continue;
+    }
 
-    if (line === "CLASE LABORATORIO") {
+    if (inRequirements) {
+      // Accepts both "8 - Cálculo Diferencial" and the real export's
+      // unseparated "3006822CONJUNTOS Y COMBINATORIA".
+      const reqMatch = /^(\d+)\s*[-–]?\s*(.+)$/.exec(line);
+      if (reqMatch) {
+        current.requirements.push({ courseId: reqMatch[1] as string, courseName: (reqMatch[2] as string).trim() });
+        continue;
+      }
+    }
+
+    if (/^CLASE LABORATORIO\b/.test(line)) {
+      pendingIsLab = true;
       if (currentGroup) currentGroup.isLab = true;
       continue;
     }
-    if (line === "CLASE TEORICA") {
+    if (/^CLASE TEORICA\b/.test(line)) {
+      pendingIsLab = false;
       if (currentGroup) currentGroup.isLab = false;
       continue;
     }
@@ -142,6 +160,7 @@ export function parseUnal(rawText: string, options: { defaultValidity?: DateRang
         quota: -1,
         disabled: false,
         slots: [],
+        isLab: pendingIsLab,
       };
       current.groups.push(currentGroup);
       continue;
@@ -176,7 +195,7 @@ export function parseUnal(rawText: string, options: { defaultValidity?: DateRang
     const dayMatch = DAY_LINE.exec(line);
     if (dayMatch) {
       const day = DAY_MAP[(dayMatch[1] as string).toUpperCase()];
-      const time = parseSpanishTimeRange(dayMatch[2] as string);
+      const time = parseUnalDayTimeRange(dayMatch[2] as string);
       if (day && time) {
         const slot: ScheduleSlot = {
           day,
