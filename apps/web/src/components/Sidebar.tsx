@@ -4,14 +4,16 @@ import { AddCourseDialog } from "./AddCourseDialog";
 import { CourseCard } from "./CourseCard";
 import { ImportTextPanel } from "./ImportTextPanel";
 import { UnalLiveSearchDialog } from "./UnalLiveSearchDialog";
-import { PlusIcon, SearchIcon, WifiIcon } from "./icons";
+import { PlusIcon, RefreshIcon, SearchIcon, WifiIcon } from "./icons";
 
 export function Sidebar() {
   const university = useSelectedUniversity();
   const generate = useAppStore((s) => s.generate);
+  const refreshAllLiveCourses = useAppStore((s) => s.refreshAllLiveCourses);
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [liveSearchOpen, setLiveSearchOpen] = useState(false);
+  const [refreshingAll, setRefreshingAll] = useState(false);
 
   const filtered = useMemo(() => {
     if (!university) return [];
@@ -35,11 +37,32 @@ export function Sidebar() {
     );
   }
 
+  const hasLiveCourses = Object.keys(university.liveLinks ?? {}).length > 0;
+
+  async function handleRefreshAll() {
+    setRefreshingAll(true);
+    await refreshAllLiveCourses();
+    setRefreshingAll(false);
+  }
+
   return (
     <div className="flex w-72 shrink-0 flex-col gap-3 border-r border-[var(--border)] bg-[var(--panel)] p-3.5">
       <div className="flex items-center justify-between">
         <div className="font-display text-[15px] font-semibold text-[var(--text)]">Cursos</div>
         <div className="flex items-center gap-1.5">
+          {hasLiveCourses && (
+            <button
+              type="button"
+              onClick={handleRefreshAll}
+              disabled={refreshingAll}
+              className="flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
+              aria-label="Actualizar todas las asignaturas en vivo"
+              title="Actualizar cupos de todas las asignaturas en vivo"
+            >
+              <RefreshIcon width={12} height={12} className={refreshingAll ? "animate-spin" : ""} />
+              {refreshingAll ? "Actualizando..." : "Actualizar todo"}
+            </button>
+          )}
           {university.id === "unal" && (
             <button
               type="button"

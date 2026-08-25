@@ -19,6 +19,7 @@ export function CourseCard({ course, liveLink }: { course: Course; liveLink?: Li
   const [addGroupOpen, setAddGroupOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const removeCourse = useAppStore((s) => s.removeCourse);
   const toggleGroupDisabled = useAppStore((s) => s.toggleGroupDisabled);
   const refreshLiveCourse = useAppStore((s) => s.refreshLiveCourse);
@@ -31,6 +32,17 @@ export function CourseCard({ course, liveLink }: { course: Course; liveLink?: Li
     const result = await refreshLiveCourse(course.id);
     if (!result.ok) setRefreshError(result.error ?? "No se pudo actualizar.");
     setRefreshing(false);
+  }
+
+  async function handleCopyId(e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(course.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
   }
 
   return (
@@ -64,7 +76,16 @@ export function CourseCard({ course, liveLink }: { course: Course; liveLink?: Li
       </button>
       <div className="flex items-center justify-between pl-3.5">
         <span className="font-mono text-[10px] text-[var(--text-faint)]">
-          {course.id} · {course.groups.length} grupo{course.groups.length === 1 ? "" : "s"}
+          <button
+            type="button"
+            onClick={handleCopyId}
+            className="hover:text-[var(--accent)]"
+            title="Copiar código del curso"
+          >
+            {course.id}
+          </button>{" "}
+          · {course.groups.length} grupo{course.groups.length === 1 ? "" : "s"}
+          {copied && <span className="ml-1 text-[var(--accent)]">Copiado</span>}
         </span>
         {liveLink && (
           <button
