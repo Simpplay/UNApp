@@ -17,7 +17,13 @@ function Badge({ children, tone = "muted" }: { children: React.ReactNode; tone?:
   );
 }
 
-export function Navigator() {
+export function Navigator({
+  onExportImage,
+  exportingImage,
+}: {
+  onExportImage?: () => void;
+  exportingImage?: boolean;
+}) {
   const generateResult = useAppStore((s) => s.generateResult);
   const currentIndex = useAppStore((s) => s.currentIndex);
   const goTo = useAppStore((s) => s.goToCombination);
@@ -70,6 +76,17 @@ export function Navigator() {
               <PinIcon width={13} height={13} />
             </button>
           </>
+        )}
+        {onExportImage && (
+          <button
+            type="button"
+            onClick={onExportImage}
+            disabled={exportingImage || total === 0}
+            className="ml-1 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-30"
+            title="Exportar horario como imagen (PNG)"
+          >
+            {exportingImage ? "Exportando…" : "Exportar imagen"}
+          </button>
         )}
         <button
           type="button"

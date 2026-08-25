@@ -1,9 +1,9 @@
 import { formatHHmm, WEEKDAY_LABEL_ES, type Group } from "@unapp/core";
-import { useMemo } from "react";
+import { forwardRef, useMemo } from "react";
 import { useSelectedUniversity } from "../store/appStore";
 import { computeHourRange, computeVisibleDays, minutesToRow, ROW_HEIGHT_PX, rowCount } from "../lib/calendarLayout";
 
-export function CalendarGrid({ groups }: { groups: Group[] }) {
+export const CalendarGrid = forwardRef<HTMLDivElement, { groups: Group[] }>(function CalendarGrid({ groups }, ref) {
   const university = useSelectedUniversity();
   const config = university?.config;
 
@@ -20,7 +20,10 @@ export function CalendarGrid({ groups }: { groups: Group[] }) {
   if (!config) return null;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel)]">
+    <div
+      ref={ref}
+      className="flex flex-1 flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel)]"
+    >
       <div
         className="grid shrink-0 border-b border-[var(--border)]"
         style={{ gridTemplateColumns: `56px repeat(${days.length}, 1fr)` }}
@@ -36,7 +39,7 @@ export function CalendarGrid({ groups }: { groups: Group[] }) {
         ))}
       </div>
 
-      <div className="relative flex-1 overflow-y-auto">
+      <div className="relative flex-1 overflow-y-auto" data-export-scroll>
         <div
           className="relative grid"
           style={{ gridTemplateColumns: `56px repeat(${days.length}, 1fr)`, gridTemplateRows: `repeat(${rows}, ${ROW_HEIGHT_PX}px)` }}
@@ -136,4 +139,4 @@ export function CalendarGrid({ groups }: { groups: Group[] }) {
       </div>
     </div>
   );
-}
+});

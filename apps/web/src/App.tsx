@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarGrid } from "./components/CalendarGrid";
 import { ComparePanel } from "./components/ComparePanel";
 import { Navigator } from "./components/Navigator";
@@ -6,6 +6,7 @@ import { SettingsDrawer } from "./components/SettingsDrawer";
 import { Sidebar } from "./components/Sidebar";
 import { StudyPlanView } from "./components/StudyPlanView";
 import { TopBar } from "./components/TopBar";
+import { exportElementAsImage } from "./lib/exportImage";
 import { useAppStore, useSelectedUniversity } from "./store/appStore";
 
 type View = "schedule" | "plan";
@@ -68,13 +69,27 @@ export default function App() {
   const compareOpen = useAppStore((s) => s.compareOpen);
   const generateResult = useAppStore((s) => s.generateResult);
   const currentIndex = useAppStore((s) => s.currentIndex);
+  const university = useSelectedUniversity();
   const [view, setView] = useState<View>("schedule");
+  const [exportingImage, setExportingImage] = useState(false);
+  const scheduleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
 
   const currentGroups = generateResult?.combinations[currentIndex]?.groups ?? [];
+
+  async function handleExportImage() {
+    if (!scheduleRef.current || exportingImage) return;
+    setExportingImage(true);
+    try {
+      const stamp = new Date().toISOString().slice(0, 10);
+      await exportElementAsImage(scheduleRef.current, `horario-${university?.id ?? "unapp"}-${stamp}.png`);
+    } finally {
+      setExportingImage(false);
+    }
+  }
 
   if (!hydrated) {
     return <div className="flex h-full items-center justify-center text-sm text-[var(--text-faint)]">Cargando…</div>;
@@ -90,8 +105,8 @@ export default function App() {
           {view === "schedule" ? (
             <>
               <StatusBanner />
-              <Navigator />
-              <CalendarGrid groups={currentGroups} />
+              <Navigator onExportImage={handleExportImage} exportingImage={exportingImage} />
+              <CalendarGrid ref={scheduleRef} groups={currentGroups} />
             </>
           ) : (
             <StudyPlanView />
