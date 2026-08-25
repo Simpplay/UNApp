@@ -10,10 +10,13 @@ export function Sidebar() {
   const university = useSelectedUniversity();
   const generate = useAppStore((s) => s.generate);
   const refreshAllLiveCourses = useAppStore((s) => s.refreshAllLiveCourses);
+  const reorderCourses = useAppStore((s) => s.reorderCourses);
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [liveSearchOpen, setLiveSearchOpen] = useState(false);
   const [refreshingAll, setRefreshingAll] = useState(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (!university) return [];
@@ -43,6 +46,12 @@ export function Sidebar() {
     setRefreshingAll(true);
     await refreshAllLiveCourses();
     setRefreshingAll(false);
+  }
+
+  function handleDrop(targetId: string) {
+    if (draggedId && draggedId !== targetId) reorderCourses(draggedId, targetId);
+    setDraggedId(null);
+    setDragOverId(null);
   }
 
   return (
@@ -100,10 +109,36 @@ export function Sidebar() {
 
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto">
         {filtered.length === 0 && (
-          <div className="pt-6 text-center text-[11px] text-[var(--text-faint)]">Ningún curso todavía.</div>
+          <div className="pt-6 text-center text-[11px] text-[var(--text-faint)]">
+            Ningún curso todavía.
+          </div>
         )}
         {filtered.map((course) => (
-          <CourseCard key={course.id} course={course} liveLink={university.liveLinks?.[course.id]} />
+          <CourseCard
+            key={course.id}
+            course={course}
+            liveLink={university.liveLinks?.[course.id]}
+            reorderable={filtered.length > 1}
+            isDragging={draggedId === course.id}
+            isDragOver={dragOverId === course.id && draggedId !== course.id}
+            onDragStart={(e) => {
+              setDraggedId(course.id);
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              if (dragOverId !== course.id) setDragOverId(course.id);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              handleDrop(course.id);
+            }}
+            onDragEnd={() => {
+              setDraggedId(null);
+              setDragOverId(null);
+            }}
+          />
         ))}
       </div>
 

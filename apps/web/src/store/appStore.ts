@@ -55,6 +55,7 @@ interface AppState {
   refreshLiveCourse: (courseId: string) => Promise<{ ok: boolean; error?: string }>;
   refreshAllLiveCourses: () => Promise<void>;
   removeCourse: (courseId: string) => void;
+  reorderCourses: (draggedId: string, targetId: string) => void;
   toggleGroupDisabled: (courseId: string, groupId: string) => void;
   updateConfig: (patch: Partial<CombinationConfig>) => void;
   generate: () => void;
@@ -113,7 +114,8 @@ function applyLiveCourses(
       const reconciled: Course = {
         ...incoming,
         color: existing.color,
-        requirements: existing.requirements.length > 0 ? existing.requirements : incoming.requirements,
+        requirements:
+          existing.requirements.length > 0 ? existing.requirements : incoming.requirements,
         groups: reconcileLiveGroups(existing.groups, incoming.groups),
       };
       courses = courses.map((c, i) => (i === existingIndex ? reconciled : c));
@@ -194,7 +196,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!uni) return { warnings: [], added: 0 };
     const adapter = builtInAdapters.find((a) => a.id === uni.id);
     if (!adapter) {
-      return { warnings: [{ message: "Esta universidad no tiene un formato de importación automática; agrega los cursos manualmente." }], added: 0 };
+      return {
+        warnings: [
+          {
+            message:
+              "Esta universidad no tiene un formato de importación automática; agrega los cursos manualmente.",
+          },
+        ],
+        added: 0,
+      };
     }
     const { courses: parsed, warnings } = adapter.parse(text);
     const existingIds = new Set(uni.courses.map((c) => c.id));
@@ -208,7 +218,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
     void persist(nextUni);
     return {
-      warnings: skipped > 0 ? [...warnings, { message: `${skipped} curso(s) ya existían y no se duplicaron.` }] : warnings,
+      warnings:
+        skipped > 0
+          ? [...warnings, { message: `${skipped} curso(s) ya existían y no se duplicaron.` }]
+          : warnings,
       added: toAdd.length,
     };
   },
@@ -238,7 +251,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (course.groups.some((g) => g.id === group.id)) {
       return { ok: false, error: "Ya existe un grupo con ese ID en este curso." };
     }
-    const nextCourses = uni.courses.map((c) => (c.id === courseId ? { ...c, groups: [...c.groups, group] } : c));
+    const nextCourses = uni.courses.map((c) =>
+      c.id === courseId ? { ...c, groups: [...c.groups, group] } : c,
+    );
     const nextUni: StoredUniversity = { ...uni, courses: nextCourses };
     set((s) => ({ universities: s.universities.map((u) => (u.id === uni.id ? nextUni : u)) }));
     void persist(nextUni);
@@ -250,9 +265,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     const uni = selected(state);
     if (!uni) return { added: 0, warnings: [] };
 
-    const { courses: mapped, warnings } = mapUnalSubjectToCourse(subject, groups, schedulesByGroupId);
-    const groupUpdatedAt = Object.fromEntries(groups.map((g) => [g.group_identifier, g.updated_at]));
-    const nextUni = applyLiveCourses(uni, subject.subject_id, subject.code, subject.updated_at, mapped, groupUpdatedAt);
+    const { courses: mapped, warnings } = mapUnalSubjectToCourse(
+      subject,
+      groups,
+      schedulesByGroupId,
+    );
+    const groupUpdatedAt = Object.fromEntries(
+      groups.map((g) => [g.group_identifier, g.updated_at]),
+    );
+    const nextUni = applyLiveCourses(
+      uni,
+      subject.subject_id,
+      subject.code,
+      subject.updated_at,
+      mapped,
+      groupUpdatedAt,
+    );
 
     set((s) => ({ universities: s.universities.map((u) => (u.id === uni.id ? nextUni : u)) }));
     void persist(nextUni);
@@ -281,17 +309,35 @@ export const useAppStore = create<AppState>((set, get) => ({
       available_seats: result.data.groups.reduce((sum, g) => sum + g.available_places, 0),
       updated_at: subjectUpdatedAt,
     };
-    const { courses: mapped } = mapUnalSubjectToCourse(subject, result.data.groups, result.data.schedulesByGroupId);
-    const groupUpdatedAt = Object.fromEntries(result.data.groups.map((g) => [g.group_identifier, g.updated_at]));
+    const { courses: mapped } = mapUnalSubjectToCourse(
+      subject,
+      result.data.groups,
+      result.data.schedulesByGroupId,
+    );
+    const groupUpdatedAt = Object.fromEntries(
+      result.data.groups.map((g) => [g.group_identifier, g.updated_at]),
+    );
 
     const latestUni = selected(get());
     if (!latestUni) return { ok: false, error: "La universidad ya no está seleccionada." };
-    const nextUni = applyLiveCourses(latestUni, link.subjectId, link.subjectCode, subjectUpdatedAt, mapped, groupUpdatedAt);
+    const nextUni = applyLiveCourses(
+      latestUni,
+      link.subjectId,
+      link.subjectCode,
+      subjectUpdatedAt,
+      mapped,
+      groupUpdatedAt,
+    );
 
-    set((s) => ({ universities: s.universities.map((u) => (u.id === latestUni.id ? nextUni : u)) }));
+    set((s) => ({
+      universities: s.universities.map((u) => (u.id === latestUni.id ? nextUni : u)),
+    }));
     void persist(nextUni);
     return result.data.failedGroupIds.length > 0
-      ? { ok: true, error: `${result.data.failedGroupIds.length} grupo(s) no se pudieron actualizar.` }
+      ? {
+          ok: true,
+          error: `${result.data.failedGroupIds.length} grupo(s) no se pudieron actualizar.`,
+        }
       : { ok: true };
   },
 
@@ -313,7 +359,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     const uni = selected(state);
     if (!uni) return;
-    const nextUni: StoredUniversity = { ...uni, courses: uni.courses.filter((c) => c.id !== courseId) };
+    const nextUni: StoredUniversity = {
+      ...uni,
+      courses: uni.courses.filter((c) => c.id !== courseId),
+    };
     if (nextUni.liveLinks && courseId in nextUni.liveLinks) {
       const liveLinks = { ...nextUni.liveLinks };
       delete liveLinks[courseId];
@@ -324,6 +373,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       generateResult: null,
       currentIndex: 0,
     }));
+    void persist(nextUni);
+  },
+
+  reorderCourses: (draggedId, targetId) => {
+    if (draggedId === targetId) return;
+    const state = get();
+    const uni = selected(state);
+    if (!uni) return;
+    const courses = [...uni.courses];
+    const fromIndex = courses.findIndex((c) => c.id === draggedId);
+    const toIndex = courses.findIndex((c) => c.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const moved = courses.splice(fromIndex, 1)[0] as Course;
+    courses.splice(toIndex, 0, moved);
+    const nextUni: StoredUniversity = { ...uni, courses };
+    set((s) => ({ universities: s.universities.map((u) => (u.id === uni.id ? nextUni : u)) }));
     void persist(nextUni);
   },
 
@@ -368,7 +433,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { generateResult, currentIndex } = get();
     if (!generateResult || generateResult.combinations.length === 0) return;
     const total = generateResult.combinations.length;
-    const next = ((currentIndex + delta) % total + total) % total;
+    const next = (((currentIndex + delta) % total) + total) % total;
     set({ currentIndex: next });
   },
 
@@ -392,7 +457,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     void persist(nextUni);
   },
 
-  toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen, compareOpen: s.settingsOpen ? s.compareOpen : false })),
+  toggleSettings: () =>
+    set((s) => ({
+      settingsOpen: !s.settingsOpen,
+      compareOpen: s.settingsOpen ? s.compareOpen : false,
+    })),
   toggleCompare: () => set((s) => ({ compareOpen: !s.compareOpen })),
 
   exportBackup: () => {
@@ -423,12 +492,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     let backup: { courses: Course[]; config?: CombinationConfig; pinned?: PinnedCombination[] };
     if (isLegacyV1Backup(parsed)) {
       const migrated = migrateLegacyV1Backup(parsed);
-      if (migrated.warnings.length > 0) console.warn("Advertencias al migrar respaldo v1:", migrated.warnings);
+      if (migrated.warnings.length > 0)
+        console.warn("Advertencias al migrar respaldo v1:", migrated.warnings);
       backup = { courses: migrated.courses, config: migrated.config };
     } else if (isBackupShape(parsed)) {
       backup = parsed;
     } else {
-      return { ok: false, error: "El archivo no tiene el formato esperado de un respaldo de UNApp." };
+      return {
+        ok: false,
+        error: "El archivo no tiene el formato esperado de un respaldo de UNApp.",
+      };
     }
 
     const existingCourseIds = new Set(uni.courses.map((c) => c.id));

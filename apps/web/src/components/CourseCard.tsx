@@ -1,10 +1,15 @@
-import { isCourseEffectivelyDisabled, isCourseOutOfSeats, isGroupEffectivelyDisabled, type Course } from "@unapp/core";
-import { useState } from "react";
+import {
+  isCourseEffectivelyDisabled,
+  isCourseOutOfSeats,
+  isGroupEffectivelyDisabled,
+  type Course,
+} from "@unapp/core";
+import { type DragEvent, useState } from "react";
 import type { LiveCourseLink } from "../lib/db";
 import { formatRelativeTime } from "../lib/format";
 import { useAppStore } from "../store/appStore";
 import { AddGroupDialog } from "./AddGroupDialog";
-import { PlusIcon, RefreshIcon, TrashIcon, WifiIcon } from "./icons";
+import { GripIcon, PlusIcon, RefreshIcon, TrashIcon, WifiIcon } from "./icons";
 
 /** Absolute thresholds - the domain `Group` model only knows available seats, not capacity. */
 function quotaColor(quota: number): string {
@@ -14,7 +19,27 @@ function quotaColor(quota: number): string {
   return "#34d399";
 }
 
-export function CourseCard({ course, liveLink }: { course: Course; liveLink?: LiveCourseLink | undefined }) {
+export function CourseCard({
+  course,
+  liveLink,
+  reorderable = false,
+  isDragging = false,
+  isDragOver = false,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}: {
+  course: Course;
+  liveLink?: LiveCourseLink | undefined;
+  reorderable?: boolean;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  onDragStart?: (e: DragEvent<HTMLDivElement>) => void;
+  onDragOver?: (e: DragEvent<HTMLDivElement>) => void;
+  onDrop?: (e: DragEvent<HTMLDivElement>) => void;
+  onDragEnd?: (e: DragEvent<HTMLDivElement>) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [addGroupOpen, setAddGroupOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,42 +73,62 @@ export function CourseCard({ course, liveLink }: { course: Course; liveLink?: Li
 
   return (
     <div
+      draggable={reorderable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       className="rounded-lg border p-2.5"
       style={{
-        borderColor: "var(--border)",
+        borderColor: isDragOver ? "var(--accent)" : "var(--border)",
         background: "var(--panel-alt)",
-        opacity: disabled ? 0.55 : 1,
+        opacity: isDragging ? 0.4 : disabled ? 0.55 : 1,
         borderStyle: disabled ? "dashed" : "solid",
       }}
     >
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-1.5 text-left"
-      >
-        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: course.color }} />
-        <span className="flex-1 truncate text-xs font-semibold text-[var(--text)]">{course.name}</span>
-        {outOfSeats && (
+      <div className="flex w-full items-center gap-1.5">
+        {reorderable && (
           <span
-            className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
-            style={{ color: "#fb7185", background: "color-mix(in srgb, #fb7185 14%, transparent)" }}
-            title="Todos los grupos están llenos - este curso se excluye automáticamente de las combinaciones"
+            className="shrink-0 cursor-grab text-[var(--text-faint)] active:cursor-grabbing"
+            title="Arrastrar para reordenar"
           >
-            Sin cupos
+            <GripIcon width={12} height={12} />
           </span>
         )}
-        {liveLink && (
-          <span
-            className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[var(--accent)]"
-            style={{ background: "color-mix(in srgb, var(--accent) 14%, transparent)" }}
-            title={`Datos en vivo de UNAL - actualizado ${formatRelativeTime(liveLink.subjectUpdatedAt)}`}
-          >
-            <WifiIcon width={10} height={10} />
-            en vivo
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex flex-1 items-center gap-1.5 text-left"
+        >
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: course.color }} />
+          <span className="flex-1 truncate text-xs font-semibold text-[var(--text)]">
+            {course.name}
           </span>
-        )}
-        <span className="font-mono text-[10px] text-[var(--text-muted)]">{course.credits}cr</span>
-      </button>
+          {outOfSeats && (
+            <span
+              className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
+              style={{
+                color: "#fb7185",
+                background: "color-mix(in srgb, #fb7185 14%, transparent)",
+              }}
+              title="Todos los grupos están llenos - este curso se excluye automáticamente de las combinaciones"
+            >
+              Sin cupos
+            </span>
+          )}
+          {liveLink && (
+            <span
+              className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[var(--accent)]"
+              style={{ background: "color-mix(in srgb, var(--accent) 14%, transparent)" }}
+              title={`Datos en vivo de UNAL - actualizado ${formatRelativeTime(liveLink.subjectUpdatedAt)}`}
+            >
+              <WifiIcon width={10} height={10} />
+              en vivo
+            </span>
+          )}
+          <span className="font-mono text-[10px] text-[var(--text-muted)]">{course.credits}cr</span>
+        </button>
+      </div>
       <div className="flex items-center justify-between pl-3.5">
         <span className="font-mono text-[10px] text-[var(--text-faint)]">
           <button
@@ -137,7 +182,10 @@ export function CourseCard({ course, liveLink }: { course: Course; liveLink?: Li
                 </span>
                 <span className="flex items-center gap-1.5 font-mono">
                   {liveLink && (
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: quotaColor(g.quota) }} />
+                    <span
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ background: quotaColor(g.quota) }}
+                    />
                   )}
                   {g.quota === -1 ? "?" : g.quota}
                 </span>
@@ -165,7 +213,9 @@ export function CourseCard({ course, liveLink }: { course: Course; liveLink?: Li
         </div>
       )}
 
-      {addGroupOpen && <AddGroupDialog courseId={course.id} onClose={() => setAddGroupOpen(false)} />}
+      {addGroupOpen && (
+        <AddGroupDialog courseId={course.id} onClose={() => setAddGroupOpen(false)} />
+      )}
     </div>
   );
 }

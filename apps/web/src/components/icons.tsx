@@ -68,7 +68,10 @@ export const TrashIcon = (p: SVGProps<SVGSVGElement>) => (
 
 export const PinIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}>
-    <path d="M10 2l1.6 4.9L16.5 8.5l-4.4 2.3L10 16l-2.1-5.2-4.4-2.3 4.9-1.6L10 2z" strokeLinejoin="round" />
+    <path
+      d="M10 2l1.6 4.9L16.5 8.5l-4.4 2.3L10 16l-2.1-5.2-4.4-2.3 4.9-1.6L10 2z"
+      strokeLinejoin="round"
+    />
   </Icon>
 );
 
@@ -88,6 +91,17 @@ export const RefreshIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}>
     <path d="M4 10a6 6 0 0110.2-4.3M16 10a6 6 0 01-10.2 4.3" />
     <path d="M14.2 3.8v2.9h-2.9M5.8 16.2v-2.9h2.9" />
+  </Icon>
+);
+
+export const GripIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p} strokeWidth="0">
+    <circle cx="7" cy="5" r="1.3" fill="currentColor" />
+    <circle cx="13" cy="5" r="1.3" fill="currentColor" />
+    <circle cx="7" cy="10" r="1.3" fill="currentColor" />
+    <circle cx="13" cy="10" r="1.3" fill="currentColor" />
+    <circle cx="7" cy="15" r="1.3" fill="currentColor" />
+    <circle cx="13" cy="15" r="1.3" fill="currentColor" />
   </Icon>
 );
 
