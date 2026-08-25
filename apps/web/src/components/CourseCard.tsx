@@ -1,4 +1,4 @@
-import { isCourseFullyDisabled, isGroupEffectivelyDisabled, type Course } from "@unapp/core";
+import { isCourseEffectivelyDisabled, isCourseOutOfSeats, isGroupEffectivelyDisabled, type Course } from "@unapp/core";
 import { useState } from "react";
 import type { LiveCourseLink } from "../lib/db";
 import { formatRelativeTime } from "../lib/format";
@@ -23,7 +23,8 @@ export function CourseCard({ course, liveLink }: { course: Course; liveLink?: Li
   const removeCourse = useAppStore((s) => s.removeCourse);
   const toggleGroupDisabled = useAppStore((s) => s.toggleGroupDisabled);
   const refreshLiveCourse = useAppStore((s) => s.refreshLiveCourse);
-  const disabled = isCourseFullyDisabled(course);
+  const disabled = isCourseEffectivelyDisabled(course);
+  const outOfSeats = isCourseOutOfSeats(course);
 
   async function handleRefresh(e: React.MouseEvent) {
     e.stopPropagation();
@@ -62,6 +63,15 @@ export function CourseCard({ course, liveLink }: { course: Course; liveLink?: Li
       >
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: course.color }} />
         <span className="flex-1 truncate text-xs font-semibold text-[var(--text)]">{course.name}</span>
+        {outOfSeats && (
+          <span
+            className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
+            style={{ color: "#fb7185", background: "color-mix(in srgb, #fb7185 14%, transparent)" }}
+            title="Todos los grupos están llenos - este curso se excluye automáticamente de las combinaciones"
+          >
+            Sin cupos
+          </span>
+        )}
         {liveLink && (
           <span
             className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[var(--accent)]"

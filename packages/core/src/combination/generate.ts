@@ -1,6 +1,6 @@
 import { defaultCombinationConfig, type CombinationConfig } from "../model/combination-config.js";
 import {
-  isCourseFullyDisabled,
+  isCourseEffectivelyDisabled,
   isGroupEffectivelyDisabled,
   type Course,
   type Group,
@@ -31,7 +31,11 @@ export interface GenerateOptions {
 
 export interface GenerateResult {
   combinations: Combination[];
-  /** Selected courses with zero available (enabled, quota > 0) groups - no combination can include them. */
+  /**
+   * Selected courses with zero groups defined at all - no combination can
+   * include them. Courses that ran out of seats no longer land here: they're
+   * auto-excluded up front, same as a manually fully-disabled course.
+   */
   blockedCourses: Course[];
   /** True if generation stopped early because maxResults was reached. */
   truncated: boolean;
@@ -53,7 +57,7 @@ export function generateCombinations(courses: Course[], options: GenerateOptions
   const config = options.config ?? defaultCombinationConfig();
   const maxResults = options.maxResults ?? 5000;
 
-  const eligibleCourses = courses.filter((c) => !isCourseFullyDisabled(c));
+  const eligibleCourses = courses.filter((c) => !isCourseEffectivelyDisabled(c));
   const totalCredits = eligibleCourses.reduce((sum, c) => sum + c.credits, 0);
   const creditsWithinLimits =
     (config.minCredits === -1 || totalCredits >= config.minCredits) &&

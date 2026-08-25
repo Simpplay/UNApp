@@ -217,8 +217,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     const uni = selected(state);
     if (!uni) return;
-    if (uni.courses.some((c) => c.id === course.id)) return;
-    const nextUni: StoredUniversity = { ...uni, courses: [...uni.courses, course] };
+    const existingIndex = uni.courses.findIndex((c) => c.id === course.id);
+    const nextCourses =
+      existingIndex === -1
+        ? [...uni.courses, course]
+        : uni.courses.map((c, i) =>
+            i === existingIndex ? { ...c, name: course.name, credits: course.credits } : c,
+          );
+    const nextUni: StoredUniversity = { ...uni, courses: nextCourses };
     set((s) => ({ universities: s.universities.map((u) => (u.id === uni.id ? nextUni : u)) }));
     void persist(nextUni);
   },

@@ -31,9 +31,20 @@ describe("generateCombinations", () => {
     expect(result.combinations[0]?.groups.map((g) => g.id)).toEqual(["c1g1", "c2g2"]);
   });
 
-  it("reports courses with no available groups instead of silently returning nothing", () => {
+  it("auto-excludes a course that ran out of seats instead of blocking generation", () => {
     const courses = [
       course("c1", "Cálculo", [group("c1g1", "c1", [], { quota: 0 })]),
+      course("c2", "Física", [group("c2g1", "c2", [slot("tuesday", "08:00", "10:00")])]),
+    ];
+    const result = generateCombinations(courses);
+    expect(result.blockedCourses).toHaveLength(0);
+    expect(result.combinations).toHaveLength(1);
+    expect(result.combinations[0]?.groups.map((g) => g.parentCourseId)).toEqual(["c2"]);
+  });
+
+  it("still reports a course with no groups defined at all as blocked", () => {
+    const courses = [
+      course("c1", "Cálculo", []),
       course("c2", "Física", [group("c2g1", "c2", [slot("tuesday", "08:00", "10:00")])]),
     ];
     const result = generateCombinations(courses);

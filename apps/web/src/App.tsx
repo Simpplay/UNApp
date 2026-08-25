@@ -41,7 +41,7 @@ function StatusBanner() {
     return (
       <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-300">
         No hay combinaciones posibles: {generateResult.blockedCourses.map((c) => c.name).join(", ")} no tiene(n)
-        cupos disponibles en ningún grupo.
+        grupos agregados todavía.
       </div>
     );
   }

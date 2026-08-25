@@ -43,11 +43,22 @@ describe("addManualCourse / removeCourse / toggleGroupDisabled", () => {
     expect(uni?.courses.map((c) => c.id)).toEqual(["c1"]);
   });
 
-  it("does not add a course with a duplicate id", () => {
-    useAppStore.getState().addManualCourse(createCourse({ id: "c1", name: "Cálculo" }));
-    useAppStore.getState().addManualCourse(createCourse({ id: "c1", name: "Duplicado" }));
+  it("overwrites name/credits of a course with a duplicate id, keeping its groups", () => {
+    const first = createCourse({ id: "c1", name: "Cálculo", credits: 3 });
+    useAppStore.getState().addManualCourse(first);
+    useAppStore.getState().addManualGroup("c1", {
+      id: "g1",
+      parentCourseId: "c1",
+      quota: 5,
+      slots: [],
+      disabled: false,
+    });
+    useAppStore.getState().addManualCourse(createCourse({ id: "c1", name: "Cálculo Diferencial", credits: 4 }));
     const uni = useAppStore.getState().universities.find((u) => u.id === "mi-uni");
     expect(uni?.courses).toHaveLength(1);
+    expect(uni?.courses[0]?.name).toBe("Cálculo Diferencial");
+    expect(uni?.courses[0]?.credits).toBe(4);
+    expect(uni?.courses[0]?.groups.map((g) => g.id)).toEqual(["g1"]);
   });
 
   it("removes a course and clears any generated result", () => {
